@@ -1,0 +1,18 @@
+[
+  {
+    "id": 1,
+    "first_name": "Hakizimana",
+    "last_name": "Shalifu",
+    "email": "hakizimanashalifu7@gmail.com",
+    "password": "$2b$10$crt1Xf9YpIAYw1KvSeUDI.SrR3GdVEtX4.aQ0lMPRLd2VIgfB7iga",
+    "created_at": "2026-05-08T19:20:30.122Z"
+  },
+  {
+    "id": 2,
+    "first_name": "Hakizimana",
+    "last_name": "Shalifu",
+    "email": "hakizimanashalifu77@gmail.com",
+    "password": "$2b$10$M40SAwPavz9D70AlawTHremyfD5bFqSOBRUh7CIJNffqUE05/MCj.",
+    "created_at": "2026-05-09T22:13:20.470Z"
+  }
+]
