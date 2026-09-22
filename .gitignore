@@ -31,12 +31,19 @@ Thumbs.db
 *.swp
 *.swo
 
-# Runtime/uploads
+# Runtime/uploads and local data
 uploads/
 **/uploads/
 public/uploads/
-
-# Local data
 *.sqlite
 *.sqlite3
 *.db
+
+# Local generated files
+backend/uploads/
+frontend/dist/
+frontend/build/
+frontend/coverage/
+frontend/.vite/
+backend/.env
+frontend/.env
