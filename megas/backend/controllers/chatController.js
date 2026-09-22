@@ -24,11 +24,9 @@ exports.getConversations = async (req, res) => {
            LIMIT 1
          ), '') AS last_at
        FROM users u
-       WHERE u.id IN (
-         SELECT IF(sender_id = ?, receiver_id, sender_id) FROM messages WHERE sender_id = ? OR receiver_id = ?
-       )
-       ORDER BY last_at DESC`,
-      [req.user.id, req.user.id, req.user.id, req.user.id, req.user.id, req.user.id, req.user.id]
+       WHERE u.id != ?
+       ORDER BY last_at DESC, u.username ASC`,
+      [req.user.id, req.user.id, req.user.id, req.user.id, req.user.id]
     );
 
     return res.json({ conversations });
@@ -42,7 +40,7 @@ exports.getMessages = async (req, res) => {
   const { userId } = req.params;
   try {
     const messages = await query(
-      'SELECT id, sender_id AS senderId, receiver_id AS receiverId, message, created_at FROM messages WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?) ORDER BY created_at ASC',
+      'SELECT id, sender_id AS senderId, receiver_id AS receiverId, message, read_at, created_at FROM messages WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?) ORDER BY created_at ASC',
       [req.user.id, userId, userId, req.user.id]
     );
     return res.json({ messages });

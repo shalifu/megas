@@ -39,18 +39,23 @@ function initChatSocket(server) {
     activeUsers.set(String(socket.user.id), socket.id);
     io.emit('presence:update', Array.from(activeUsers.keys()));
 
-    socket.on('send_message', async ({ receiverId, message }) => {
+    socket.on('send_message', async ({ receiverId, message }, callback) => {
       try {
+        if (!receiverId || !message?.trim()) {
+          if (typeof callback === 'function') callback({ error: 'Receiver and message are required.' });
+          return;
+        }
+
         const result = await query(
           'INSERT INTO messages (sender_id, receiver_id, message) VALUES (?, ?, ?)',
-          [socket.user.id, receiverId, message]
+          [socket.user.id, receiverId, message.trim()]
         );
 
         const payload = {
           id: result.lastInsertRowid,
           senderId: socket.user.id,
           receiverId,
-          message,
+          message: message.trim(),
           created_at: new Date(),
         };
 
@@ -67,10 +72,39 @@ function initChatSocket(server) {
           });
         }
 
+        if (typeof callback === 'function') callback(payload);
         socket.emit('message_sent', payload);
       } catch (error) {
         console.error(error);
+        if (typeof callback === 'function') callback({ error: 'Unable to save message.' });
         socket.emit('error', { message: 'Unable to save message.' });
+      }
+    });
+
+    socket.on('mark_messages_read', async ({ otherUserId }, callback) => {
+      try {
+        if (!otherUserId) {
+          if (typeof callback === 'function') callback({ error: 'Conversation is required.' });
+          return;
+        }
+
+        await query(
+          'UPDATE messages SET read_at = CURRENT_TIMESTAMP WHERE sender_id = ? AND receiver_id = ? AND read_at IS NULL',
+          [otherUserId, socket.user.id]
+        );
+
+        const senderSocket = activeUsers.get(String(otherUserId));
+        if (senderSocket) {
+          io.to(senderSocket).emit('messages_read', {
+            readerId: socket.user.id,
+            conversationUserId: otherUserId,
+          });
+        }
+
+        if (typeof callback === 'function') callback({ success: true });
+      } catch (error) {
+        console.error(error);
+        if (typeof callback === 'function') callback({ error: 'Unable to mark messages as read.' });
       }
     });
 

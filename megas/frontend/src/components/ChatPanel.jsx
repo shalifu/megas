@@ -30,6 +30,7 @@ function ChatPanel() {
     try {
       const response = await api.get(`/chat/messages/${contactId}`);
       setMessages(response.data.messages || []);
+      socket.emit('mark_messages_read', { otherUserId: contactId });
     } catch (error) {
       console.error(error);
     }
@@ -51,7 +52,18 @@ function ChatPanel() {
       if (isCurrent) {
         setMessages((prev) => [...prev, message]);
       }
-      loadConversations();
+
+      api.get('/chat/conversations')
+        .then((response) => {
+          const conversations = response.data.conversations || [];
+          setContacts(conversations);
+
+          if (message.receiverId === user.id && message.senderId !== selected?.id) {
+            const sender = conversations.find((contact) => contact.id === message.senderId);
+            if (sender) setSelected(sender);
+          }
+        })
+        .catch((error) => console.error(error));
     };
 
     const handleTyping = (payload) => {
@@ -61,14 +73,26 @@ function ChatPanel() {
       }
     };
 
+    const handleMessagesRead = ({ readerId, conversationUserId }) => {
+      if (conversationUserId !== user.id) return;
+
+      setMessages((prev) => prev.map((message) => (
+        message.senderId === user.id && message.receiverId === readerId
+          ? { ...message, read_at: new Date().toISOString() }
+          : message
+      )));
+    };
+
     socket.on('receive_message', handleReceive);
     socket.on('typing', handleTyping);
+    socket.on('messages_read', handleMessagesRead);
 
     return () => {
       socket.off('receive_message', handleReceive);
       socket.off('typing', handleTyping);
+      socket.off('messages_read', handleMessagesRead);
     };
-  }, [selected]);
+  }, [selected, user.id]);
 
   const handleSend = async () => {
     if (!selected || !text.trim()) return;
@@ -76,16 +100,22 @@ function ChatPanel() {
     const message = text.trim();
     setText('');
 
-    try {
-      const response = await api.post('/chat/messages', {
-        receiverId: selected.id,
-        message,
-      });
-      setMessages((prev) => [...prev, response.data.message]);
-      socket.emit('send_message', { receiverId: selected.id, message });
-    } catch (error) {
-      console.error(error);
+    if (!socket.connected) {
+      console.error('Chat socket is not connected.');
+      setText(message);
+      return;
     }
+
+    socket.timeout(5000).emit('send_message', { receiverId: selected.id, message }, (error, response) => {
+      if (error || response?.error) {
+        console.error(error || response.error);
+        setText(message);
+        return;
+      }
+
+      loadMessages(selected.id);
+      loadConversations();
+    });
   };
 
   return (
@@ -132,7 +162,16 @@ function ChatPanel() {
               }`}
             >
               <p className="text-sm leading-6">{message.message}</p>
-              <p className="mt-2 text-xs text-slate-500">{new Date(message.created_at).toLocaleString()}</p>
+              <p className="mt-2 text-xs text-slate-500">
+                {new Date(message.created_at).toLocaleString()}
+                {message.senderId === user.id && message.read_at && (
+                  <span
+                    className="ml-2 inline-block h-2 w-2 rounded-full bg-emerald-400 align-middle"
+                    title="Read"
+                    aria-label="Message read"
+                  />
+                )}
+              </p>
             </div>
           ))}
           {typing && <p className="text-sm text-slate-400">Typing…</p>}

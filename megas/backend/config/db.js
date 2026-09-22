@@ -42,7 +42,10 @@ async function query(sql, params = []) {
       const stmt = db.prepare(sqliteSql);
       const result = stmt.run(...params);
       return result;
-    } else if (sqliteSql.trim().toUpperCase().startsWith('CREATE')) {
+    } else if (
+      sqliteSql.trim().toUpperCase().startsWith('CREATE') ||
+      sqliteSql.trim().toUpperCase().startsWith('ALTER')
+    ) {
       db.exec(sqliteSql);
       return [];
     } else {
@@ -134,6 +137,7 @@ async function initDB() {
       receiver_id INTEGER DEFAULT NULL,
       message TEXT NOT NULL,
       chat_type TEXT DEFAULT 'direct',
+      read_at DATETIME DEFAULT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE SET NULL,
       FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -144,6 +148,11 @@ async function initDB() {
     const tableInfo = db.prepare('PRAGMA table_info(messages)').all();
     const receiverColumn = tableInfo.find((col) => col.name === 'receiver_id');
     const chatTypeColumn = tableInfo.find((col) => col.name === 'chat_type');
+    const readAtColumn = tableInfo.find((col) => col.name === 'read_at');
+
+    if (!readAtColumn) {
+      await query('ALTER TABLE messages ADD COLUMN read_at DATETIME DEFAULT NULL');
+    }
 
     if (receiverColumn && receiverColumn.notnull === 1) {
       console.log('Migrating messages table to allow NULL receiver_id for chef group chat...');
