@@ -47,3 +47,4 @@ frontend/coverage/
 frontend/.vite/
 backend/.env
 frontend/.env
+I have deployed my frontend application on Vercel and my Node.js/Express backend on Render. Right now, my frontend login requests are failing (likely due to CORS blocking across platforms).Please refactor my backend server configuration to properly accept requests from my live Vercel frontend URL, while still keeping local development working. Make sure to configure the cors middleware with credentials: true and the necessary allowed headers for an authentication/login flow.Here is my live Vercel URL: [PASTE YOUR LIVE VERCEL HOMEPAGE URL HERE]Here is my current backend server code file:[PASTE THE CONTENTS OF YOUR SERVER.JS OR APP.JS FILE HERE]

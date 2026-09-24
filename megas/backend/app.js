@@ -18,11 +18,31 @@ const contactRoutes = require('./routes/contactRoutes');
 const app = express();
 const frontendDist = path.join(__dirname, '../frontend/dist');
 
+// Updated to explicitly accept your cross-platform configuration layout
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  process.env.FRONTEND_URL,
+  'http://localhost:5173',
+  'http://localhost:3000',
+].filter(Boolean);
+
 app.use(express.json());
 app.use(cookieParser());
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    // 1. Allows tool check software (like Postman or server-to-server calls)
+    // 2. Matches exact system arrays
+    // 3. Dynamic wildcard checking fallback logic to handle Vercel deployment variations
+    if (!origin || allowedOrigins.includes(origin) || origin.includes('.vercel.app')) {
+      return callback(null, true);
+    }
+
+    return callback(new Error(`Origin ${origin} is not allowed by CORS`));
+  },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
 }));
 
 app.use('/api/auth', authRoutes);
