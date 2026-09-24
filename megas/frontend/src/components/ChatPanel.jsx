@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import api from '../services/api';
-import socket, { ensureSocketConnection } from '../socket/socketClient';
+import socket from '../socket/socketClient';
 import { useAuth } from '../context/AuthContext';
 
 function ChatPanel() {
@@ -103,25 +103,13 @@ function ChatPanel() {
     setSendError('');
 
     try {
-      await ensureSocketConnection();
+      await api.post('/chat/messages', { receiverId: selected.id, message });
+      await Promise.all([loadMessages(selected.id), loadConversations()]);
     } catch (error) {
-      console.error('Chat connection error:', error);
-      setSendError('Chat is unavailable. Please try again.');
+      console.error('Message send error:', error);
+      setSendError(error.response?.data?.message || 'Unable to send message. Please try again.');
       setText(message);
-      return;
     }
-
-    socket.timeout(5000).emit('send_message', { receiverId: selected.id, message }, (error, response) => {
-      if (error || response?.error) {
-        console.error(error || response.error);
-        setSendError('Unable to send message. Please try again.');
-        setText(message);
-        return;
-      }
-
-      loadMessages(selected.id);
-      loadConversations();
-    });
   };
 
   return (
