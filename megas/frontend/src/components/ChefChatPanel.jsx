@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import socket from '../socket/socketClient';
+import socket, { ensureSocketConnection } from '../socket/socketClient';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -65,6 +65,7 @@ function ChefChatPanel() {
 
     setIsSending(true);
     try {
+      await ensureSocketConnection();
       socket.emit('sendChefMessage', payload, (serverResponse) => {
         setIsSending(false);
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import api from '../services/api';
-import socket from '../socket/socketClient';
+import socket, { ensureSocketConnection } from '../socket/socketClient';
 import { useAuth } from '../context/AuthContext';
 
 function ChatPanel() {
@@ -10,6 +10,7 @@ function ChatPanel() {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [typing, setTyping] = useState(false);
+  const [sendError, setSendError] = useState('');
 
   const selectedLabel = useMemo(() => selected?.username || 'Select a conversation', [selected]);
 
@@ -99,9 +100,13 @@ function ChatPanel() {
 
     const message = text.trim();
     setText('');
+    setSendError('');
 
-    if (!socket.connected) {
-      console.error('Chat socket is not connected.');
+    try {
+      await ensureSocketConnection();
+    } catch (error) {
+      console.error('Chat connection error:', error);
+      setSendError('Chat is unavailable. Please try again.');
       setText(message);
       return;
     }
@@ -109,6 +114,7 @@ function ChatPanel() {
     socket.timeout(5000).emit('send_message', { receiverId: selected.id, message }, (error, response) => {
       if (error || response?.error) {
         console.error(error || response.error);
+        setSendError('Unable to send message. Please try again.');
         setText(message);
         return;
       }
@@ -197,6 +203,7 @@ function ChatPanel() {
             Send
           </button>
         </div>
+        {sendError && <p className="mt-3 text-sm text-red-400">{sendError}</p>}
       </div>
     </div>
   );
