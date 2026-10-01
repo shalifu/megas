@@ -1,6 +1,6 @@
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
-const { query } = require('../config/db');
+const { query, cleanupExpiredReadMessages } = require('../config/db');
 
 function parseCookie(cookieString) {
   return cookieString?.split(';').reduce((acc, kv) => {
@@ -106,6 +106,8 @@ function initChatSocket(server) {
           [otherUserId, socket.user.id]
         );
 
+        await cleanupExpiredReadMessages();
+
         const senderSocket = activeUsers.get(String(otherUserId));
         if (senderSocket) {
           io.to(senderSocket).emit('messages_read', {
@@ -123,16 +125,21 @@ function initChatSocket(server) {
 
     socket.on('sendChefMessage', async ({ receiverId, message, isGroup }, callback) => {
       try {
+        const isChefUser = socket.user.role === 'preadmin' || (socket.user.role === 'admin' && (socket.user.chief_position || socket.user.username === 'Admin User'));
+        if (!isChefUser) {
+          if (typeof callback === 'function') callback({ error: 'Chef access only.' });
+          return;
+        }
+
         let result;
         let payload;
 
         if (isGroup) {
-          // Send to chef group chat
           result = await query(
             'INSERT INTO messages (sender_id, receiver_id, message, chat_type) VALUES (?, ?, ?, ?)',
             [socket.user.id, null, message, 'chef_group']
           );
-          
+
           payload = {
             id: result.lastInsertRowid,
             senderId: socket.user.id,
@@ -144,12 +151,18 @@ function initChatSocket(server) {
             chief_position: socket.user.chief_position
           };
 
-          // Emit to all chef users
           const chefUsers = await query(
-            'SELECT id FROM users WHERE role = ? AND (chief_position IS NOT NULL AND chief_position != "" OR username = "Admin User") AND id != ?',
-            ['admin', socket.user.id]
+            `SELECT id FROM users
+             WHERE (role = 'admin' OR role = 'preadmin')
+             AND (
+               role = 'preadmin' OR
+               (role = 'admin' AND (chief_position IS NOT NULL AND chief_position != '')) OR
+               username = 'Admin User'
+             )
+             AND id != ?`,
+            [socket.user.id]
           );
-          
+
           for (const chef of chefUsers) {
             const chefSocket = activeUsers.get(String(chef.id));
             if (chefSocket) {
@@ -157,12 +170,11 @@ function initChatSocket(server) {
             }
           }
         } else {
-          // Send direct message
           if (!receiverId) {
             if (typeof callback === 'function') callback({ error: 'Receiver is required.' });
             return;
           }
-          
+
           result = await query(
             'INSERT INTO messages (sender_id, receiver_id, message) VALUES (?, ?, ?)',
             [socket.user.id, receiverId, message]

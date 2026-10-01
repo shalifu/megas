@@ -56,7 +56,7 @@ function App() {
             <Route path="admin/jobs" element={<ProtectedRoute allowedRoles={['admin']}><ManageJobs /></ProtectedRoute>} />
             <Route path="admin/chef-applications" element={<ProtectedRoute allowedRoles={['admin']}><ManageChefApplications /></ProtectedRoute>} />
             <Route path="admin/create-chef-application" element={<ProtectedRoute allowedRoles={['admin']}><ChefApplication /></ProtectedRoute>} />
-            <Route path="admin/chef-chat" element={<ProtectedRoute allowedRoles={['admin']}><ChefChatPanel /></ProtectedRoute>} />
+            <Route path="admin/chef-chat" element={<ProtectedRoute allowedRoles={['admin', 'preadmin']} requireChiefAccess><ChefChatPanel /></ProtectedRoute>} />
             <Route path="admin/tasks" element={<ProtectedRoute allowedRoles={['admin']}><AdminTasks /></ProtectedRoute>} />
             <Route path="admin/chat" element={<ProtectedRoute allowedRoles={['admin']}><AdminChat /></ProtectedRoute>} />
             <Route path="client" element={<ProtectedRoute allowedRoles={['client']}><ClientDashboard /></ProtectedRoute>} />
@@ -69,6 +69,7 @@ function App() {
             <Route path="preadmin" element={<ProtectedRoute allowedRoles={['preadmin']}><PreAdminDashboard /></ProtectedRoute>} />
             <Route path="preadmin/tasks" element={<ProtectedRoute allowedRoles={['preadmin']}><PreAdminTasks /></ProtectedRoute>} />
             <Route path="preadmin/chat" element={<ProtectedRoute allowedRoles={['preadmin']}><PreAdminChat /></ProtectedRoute>} />
+            <Route path="preadmin/chef-chat" element={<ProtectedRoute allowedRoles={['admin', 'preadmin']} requireChiefAccess><ChefChatPanel /></ProtectedRoute>} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" />} />

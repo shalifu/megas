@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom';
 import { useEffect } from 'react';
 import { connectSocket } from '../socket/socketClient';
 import Sidebar from '../components/Sidebar';
+import NotificationMenu from '../components/NotificationMenu';
 import { useAuth } from '../context/AuthContext';
 
 function DashboardLayout() {
@@ -33,6 +34,7 @@ function DashboardLayout() {
                 <h1 className="mt-2 text-3xl font-semibold text-white">Hello, {user?.username}</h1>
                 <p className="text-slate-400">Your dashboard is ready with live collaboration and admin insights.</p>
               </div>
+              <NotificationMenu />
             </div>
           </div>
           <Outlet />

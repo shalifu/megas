@@ -59,6 +59,12 @@ async function query(sql, params = []) {
   }
 }
 
+async function cleanupExpiredReadMessages() {
+  await query(`DELETE FROM messages
+    WHERE read_at IS NOT NULL
+      AND datetime(read_at, '+1 day') <= datetime('now')`);
+}
+
 async function initDB() {
   if (!db) {
     initializeDatabase();
@@ -264,6 +270,7 @@ async function initDB() {
       // Column might already exist, ignore error
     }
 
+    await cleanupExpiredReadMessages();
     console.log('SQLite database initialized successfully at:', dbPath);
   } catch (error) {
     console.error('Database initialization error:', error);
@@ -274,4 +281,5 @@ async function initDB() {
 module.exports = {
   query,
   initDB,
+  cleanupExpiredReadMessages,
 };

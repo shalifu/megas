@@ -61,6 +61,19 @@ exports.updateApplicationStatus = async (req, res) => {
 
   try {
     await query('UPDATE job_applications SET status = ? WHERE id = ?', [status, id]);
+
+    const applications = await query(
+      'SELECT user_id, job_title FROM job_applications WHERE id = ?',
+      [id]
+    );
+    const application = applications[0];
+    if (application) {
+      await query(
+        'INSERT INTO notifications (user_id, text, is_read) VALUES (?, ?, 0)',
+        [application.user_id, `Your job application for ${application.job_title} was ${status}.`]
+      );
+    }
+
     return res.json({ message: 'Application updated.' });
   } catch (error) {
     console.error(error);

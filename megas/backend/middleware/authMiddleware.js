@@ -30,7 +30,19 @@ function authorizeRoles(...roles) {
   };
 }
 
+function authorizeChiefAccess(req, res, next) {
+  const isChiefUser = req.user?.role === 'preadmin' ||
+    (req.user?.role === 'admin' && (req.user?.chief_position || req.user?.username === 'Admin User'));
+
+  if (!isChiefUser) {
+    return res.status(403).json({ message: 'Chief access only.' });
+  }
+
+  next();
+}
+
 module.exports = {
   authenticate,
   authorizeRoles,
+  authorizeChiefAccess,
 };

@@ -53,7 +53,29 @@ exports.updateTaskStatus = async (req, res) => {
   }
 
   try {
+    const task = await query('SELECT * FROM tasks WHERE id = ?', [id]);
+    if (!task[0]) {
+      return res.status(404).json({ message: 'Task not found.' });
+    }
+
+    const previousStatus = task[0].status;
     await query('UPDATE tasks SET status = ? WHERE id = ?', [status, id]);
+
+    if (status === 'completed' && previousStatus !== 'completed') {
+      const assignee = await query('SELECT username FROM users WHERE id = ?', [task[0].assigned_to]);
+      const assigneeName = assignee[0]?.username || 'Task assignee';
+      const creatorText = `${assigneeName} marked task "${task[0].title}" as completed.`;
+
+      await query('INSERT INTO notifications (user_id, text, is_read) VALUES (?, ?, 0)', [task[0].created_by, creatorText]);
+
+      const adminUsers = await query('SELECT id FROM users WHERE role = ? AND approved = 1', ['admin']);
+      for (const admin of adminUsers) {
+        if (admin.id !== task[0].created_by) {
+          await query('INSERT INTO notifications (user_id, text, is_read) VALUES (?, ?, 0)', [admin.id, creatorText]);
+        }
+      }
+    }
+
     return res.json({ message: 'Task status updated.' });
   } catch (error) {
     console.error(error);

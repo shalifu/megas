@@ -16,6 +16,15 @@ function ChefChatPanel() {
   const [activeUsers, setActiveUsers] = useState(new Set());
   const [status, setStatus] = useState(null);
   const [isSending, setIsSending] = useState(false);
+  const isChefUser = user && (user.role === 'preadmin' || (user.role === 'admin' && (user.chief_position || user.username === 'Admin User')));
+
+  if (!isChefUser) {
+    return (
+      <div className="rounded-3xl border border-amber-500/30 bg-amber-500/10 p-6 text-amber-200">
+        Chef access is required to view this chat.
+      </div>
+    );
+  }
 
   const selectedLabel = useMemo(() => 
     selected ? `${selected.username} (${selected.chief_position})` : 

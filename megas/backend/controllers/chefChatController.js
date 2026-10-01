@@ -1,16 +1,33 @@
 const { query } = require('../config/db');
 
+function isChefUser(user) {
+  if (!user) return false;
+  if (user.role === 'preadmin') return true;
+  if (user.role === 'admin') {
+    return Boolean(user.chief_position) || user.username === 'Admin User';
+  }
+  return false;
+}
+
 exports.getChefConversations = async (req, res) => {
   try {
-    // Get all chef users including head admin (admins with chief_position OR head administrator)
+    if (!isChefUser(req.user)) {
+      return res.status(403).json({ message: 'Chef access only.' });
+    }
+
     const chefUsers = await query(
       `SELECT id, username, chief_position FROM users 
-       WHERE role = ? AND (chief_position IS NOT NULL AND chief_position != "" OR username = 'Admin User')
-       AND id != ?`,
-      ['admin', req.user.id]
+       WHERE (role = 'admin' OR role = 'preadmin')
+       AND (
+         (role = 'preadmin') OR
+         (role = 'admin' AND (chief_position IS NOT NULL AND chief_position != '') ) OR
+         username = 'Admin User'
+       )
+       AND id != ?
+       ORDER BY username ASC`,
+      [req.user.id]
     );
 
-    // Get chef group chat messages
     const groupMessages = await query(
       `SELECT m.*, u.username, u.chief_position 
        FROM messages m 
@@ -44,6 +61,10 @@ exports.getChefMessages = async (req, res) => {
 exports.sendChefMessage = async (req, res) => {
   const { receiverId, message, isGroup } = req.body;
 
+  if (!isChefUser(req.user)) {
+    return res.status(403).json({ message: 'Chef access only.' });
+  }
+
   if (!message) {
     return res.status(400).json({ message: 'Message is required.' });
   }
@@ -53,28 +74,32 @@ exports.sendChefMessage = async (req, res) => {
     let note;
 
     if (isGroup) {
-      // Send to chef group chat
       result = await query(
         'INSERT INTO messages (sender_id, receiver_id, message, chat_type) VALUES (?, ?, ?, ?)',
         [req.user.id, null, message, 'chef_group']
       );
-      
-      // Notify all chef users
+
       const chefUsers = await query(
-        'SELECT id FROM users WHERE role = ? AND (chief_position IS NOT NULL AND chief_position != "" OR username = "Admin User") AND id != ?',
-        ['admin', req.user.id]
+        `SELECT id FROM users
+         WHERE (role = 'admin' OR role = 'preadmin')
+         AND (
+           role = 'preadmin' OR
+           (role = 'admin' AND (chief_position IS NOT NULL AND chief_position != '')) OR
+           username = 'Admin User'
+         )
+         AND id != ?`,
+        [req.user.id]
       );
-      
+
       for (const chef of chefUsers) {
         note = `${req.user.username} (${req.user.chief_position || 'Admin User'}): ${message}`;
         await query('INSERT INTO notifications (user_id, text, is_read) VALUES (?, ?, 0)', [chef.id, note]);
       }
     } else {
-      // Send direct message
       if (!receiverId) {
         return res.status(400).json({ message: 'Receiver is required for direct messages.' });
       }
-      
+
       result = await query(
         'INSERT INTO messages (sender_id, receiver_id, message) VALUES (?, ?, ?)',
         [req.user.id, receiverId, message]

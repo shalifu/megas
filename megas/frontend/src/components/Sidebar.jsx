@@ -25,6 +25,7 @@ const menuItems = {
     { path: '/dashboard/preadmin', label: 'Overview' },
     { path: '/dashboard/preadmin/tasks', label: 'Assigned Tasks' },
     { path: '/dashboard/preadmin/chat', label: 'Team Chat' },
+    { path: '/dashboard/preadmin/chef-chat', label: 'Chef Chat' },
     { path: '/dashboard/client/profile', label: 'Profile' },
   ],
 };
